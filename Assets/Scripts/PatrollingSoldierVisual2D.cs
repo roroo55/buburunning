@@ -12,6 +12,8 @@ public class PatrollingSoldierVisual2D : MonoBehaviour
     SpriteRenderer rootRenderer;
     float previousY;
     int lastVerticalDirection = -1;
+    Vector2 forcedDirection;
+    bool hasForcedDirection;
 
     void Awake()
     {
@@ -29,6 +31,13 @@ public class PatrollingSoldierVisual2D : MonoBehaviour
 
     void LateUpdate()
     {
+        if (hasForcedDirection)
+        {
+            ApplyForcedDirection();
+            previousY = transform.position.y;
+            return;
+        }
+
         float currentY = transform.position.y;
         float deltaY = currentY - previousY;
 
@@ -42,6 +51,40 @@ public class PatrollingSoldierVisual2D : MonoBehaviour
         }
 
         previousY = currentY;
+        ApplyCurrentDirection();
+    }
+
+    public void SetMovementDirection(Vector2 direction)
+    {
+        if (direction.sqrMagnitude <= movementEpsilon * movementEpsilon)
+        {
+            return;
+        }
+
+        forcedDirection = direction.normalized;
+        hasForcedDirection = true;
+        ApplyForcedDirection();
+    }
+
+    void ApplyForcedDirection()
+    {
+        CacheRenderers();
+        if (visualRenderer == null)
+        {
+            return;
+        }
+
+        if (Mathf.Abs(forcedDirection.y) >= Mathf.Abs(forcedDirection.x))
+        {
+            lastVerticalDirection = forcedDirection.y >= 0f ? 1 : -1;
+            visualRenderer.flipX = false;
+        }
+        else
+        {
+            lastVerticalDirection = -1;
+            visualRenderer.flipX = forcedDirection.x < 0f;
+        }
+
         ApplyCurrentDirection();
     }
 

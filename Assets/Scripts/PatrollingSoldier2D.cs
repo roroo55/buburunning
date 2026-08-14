@@ -6,7 +6,21 @@ public class PatrollingSoldier2D : MonoBehaviour
 {
     const string FailureRangeName = "Soldier Failure Range";
 
+    [Header("Formation Patrol")]
+    [Min(0f)]
+    [InspectorName("Move Speed")]
+    [Tooltip("Movement speed shared by all three soldiers.")]
     public float patrolSpeed = 2.4f;
+
+    [Min(0.1f)]
+    [InspectorName("Soldier Spacing")]
+    [Tooltip("Distance along the route between adjacent soldiers.")]
+    public float formationSpacing = 1.6f;
+
+    [Tooltip("Starting distance of the leading soldier along the route.")]
+    public float formationStartDistance;
+
+    [Header("Legacy Vertical Patrol")]
     public float patrolHighestOffsetY = 2.3f;
     public float patrolLowestOffsetY = -2.3f;
     public bool startMovingUp = true;
@@ -17,6 +31,7 @@ public class PatrollingSoldier2D : MonoBehaviour
     float lockedX;
     int verticalDirection;
     bool restarting;
+    bool formationControlled;
     BoxCollider2D bodyCollider;
     BoxCollider2D failureRangeCollider;
 
@@ -29,11 +44,12 @@ public class PatrollingSoldier2D : MonoBehaviour
         RefreshFailureRange();
         MoveToStartingPatrolEdge();
         ClampCurrentPositionIntoPatrolRange();
+        TrySetupFormationPatrol();
     }
 
     void Update()
     {
-        if (restarting)
+        if (restarting || formationControlled)
         {
             return;
         }
@@ -59,9 +75,47 @@ public class PatrollingSoldier2D : MonoBehaviour
         RefreshFailureRange();
     }
 
+    void TrySetupFormationPatrol()
+    {
+        Transform soldiersRoot = transform.parent;
+        Transform puzzleRoot = soldiersRoot != null ? soldiersRoot.parent : null;
+        Transform routeRoot = puzzleRoot != null ? puzzleRoot.Find("Route") : null;
+        if (soldiersRoot == null || routeRoot == null)
+        {
+            return;
+        }
+
+        SoldierPatrolFormation2D formation = puzzleRoot.GetComponent<SoldierPatrolFormation2D>();
+        if (formation == null)
+        {
+            formation = puzzleRoot.gameObject.AddComponent<SoldierPatrolFormation2D>();
+        }
+
+        formation.ConfigureFromHierarchy(soldiersRoot, routeRoot);
+    }
+
+    public void UseFormationMovement()
+    {
+        formationControlled = true;
+    }
+
+    public void SetFormationPosition(Vector3 position, Vector2 movementDirection)
+    {
+        formationControlled = true;
+        transform.position = position;
+        RefreshFailureRange();
+
+        PatrollingSoldierVisual2D visual = GetComponent<PatrollingSoldierVisual2D>();
+        if (visual != null)
+        {
+            visual.SetMovementDirection(movementDirection);
+        }
+    }
+
     void OnValidate()
     {
         patrolSpeed = Mathf.Max(0f, patrolSpeed);
+        formationSpacing = Mathf.Max(0.1f, formationSpacing);
         failureRangePadding = new Vector2(Mathf.Max(0f, failureRangePadding.x), Mathf.Max(0f, failureRangePadding.y));
 
         Transform range = transform.Find(FailureRangeName);
