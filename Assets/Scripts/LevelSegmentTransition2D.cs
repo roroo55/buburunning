@@ -13,12 +13,14 @@ public class LevelSegmentTransition2D : MonoBehaviour
     public SecondLevelCameraPreview2D secondLevelCameraPreview;
     public DoorProgressGate2D firstLevelDoorGate;
     public Collider2D firstLevelDoorCollider;
+    public Transform firstLevelStartPoint;
     public Transform secondLevelStartPoint;
     public GameObject fadeScreenRoot;
     public Image fadeImage;
     public GameObject[] objectsEnabledInSecondLevel = new GameObject[0];
     public MonoBehaviour[] behavioursEnabledInSecondLevel = new MonoBehaviour[0];
     public bool disableSecondLevelContentOnStart = true;
+    public bool startInOriginalSecondLevel;
     public bool requireDoorSolved = true;
     public bool transitionWhenPlayerPassesDoor = true;
     public bool freezeTimeDuringTransition = true;
@@ -47,9 +49,20 @@ public class LevelSegmentTransition2D : MonoBehaviour
         SetFadeVisible(false);
     }
 
-    void Start()
+    IEnumerator Start()
     {
         CacheReferences();
+        if (!startInOriginalSecondLevel)
+        {
+            yield break;
+        }
+
+        // BubuRunningGame configures the runtime player and camera in Start.
+        // Waiting one frame makes the reversed spawn deterministic regardless
+        // of Unity's component Start ordering.
+        yield return null;
+        CacheReferences();
+        MovePlayerToSecondLevel();
     }
 
     void Update()
@@ -68,7 +81,9 @@ public class LevelSegmentTransition2D : MonoBehaviour
 
     public void TriggerTransition()
     {
-        if (transitionStarted || transitionComplete)
+        if (transitionStarted
+            || transitionComplete
+            || !ShouldTransition())
         {
             return;
         }
@@ -83,7 +98,9 @@ public class LevelSegmentTransition2D : MonoBehaviour
             return false;
         }
 
-        if (requireDoorSolved && firstLevelDoorGate != null && firstLevelDoorGate.IsBlocking)
+        if (requireDoorSolved
+            && (firstLevelDoorGate == null
+                || !firstLevelDoorGate.puzzleSolved))
         {
             return false;
         }
@@ -106,7 +123,15 @@ public class LevelSegmentTransition2D : MonoBehaviour
         SetFadeVisible(true);
         yield return Fade(0f, 1f, fadeOutDuration);
 
-        MovePlayerToSecondLevel();
+        if (startInOriginalSecondLevel)
+        {
+            MovePlayerToFirstLevel();
+        }
+        else
+        {
+            MovePlayerToSecondLevel();
+        }
+
         ActivateSecondLevelContent();
 
         if (holdBlackDuration > 0f)
@@ -182,10 +207,89 @@ public class LevelSegmentTransition2D : MonoBehaviour
 
         if (unlockCameraForSecondLevel && cameraController != null)
         {
-            cameraController.UnlockForSecondLevel();
+            if (startInOriginalSecondLevel)
+            {
+                cameraController.ConfigureStartingSecondLevelFollow(
+                    GetOriginalSecondLevelBackground());
+            }
+            else
+            {
+                cameraController.UnlockForSecondLevel();
+            }
         }
 
         SnapCameraToPlayer();
+    }
+
+    void MovePlayerToFirstLevel()
+    {
+        if (player == null || firstLevelStartPoint == null)
+        {
+            return;
+        }
+
+        Vector3 targetPosition =
+            GetSafeSecondLevelStartPosition(firstLevelStartPoint.position);
+        Rigidbody2D playerBody = player.GetComponent<Rigidbody2D>();
+        if (playerBody != null)
+        {
+            playerBody.linearVelocity = Vector2.zero;
+            playerBody.position = new Vector2(targetPosition.x, targetPosition.y);
+        }
+
+        player.position =
+            new Vector3(targetPosition.x, targetPosition.y, player.position.z);
+        Physics2D.SyncTransforms();
+
+        if (cameraController != null)
+        {
+            cameraController.ConfigureFirstLevelMouseCamera();
+        }
+
+        if (secondLevelCameraPreview != null
+            && cameraController != null
+            && cameraController.firstLevelBackground != null)
+        {
+            secondLevelCameraPreview.secondLevelBackground =
+                cameraController.firstLevelBackground;
+        }
+
+        SnapCameraToPlayer();
+    }
+
+    public Transform GetOriginalSecondLevelBackground()
+    {
+        return secondLevelCameraPreview != null
+            ? secondLevelCameraPreview.secondLevelBackground
+            : null;
+    }
+
+    public float GetMinimumPlayerCenterX(float defaultMinimumX)
+    {
+        if (!startInOriginalSecondLevel
+            || transitionStarted
+            || transitionComplete)
+        {
+            return defaultMinimumX;
+        }
+
+        Transform secondLevelBackground = GetOriginalSecondLevelBackground();
+        Bounds bounds;
+        if (secondLevelBackground == null
+            || !TryGetRendererBounds(secondLevelBackground, out bounds))
+        {
+            return defaultMinimumX;
+        }
+
+        float playerHalfWidth = BubuRunningGame.PlayerWidth * 0.5f;
+        if (playerCollider != null && playerCollider.enabled)
+        {
+            playerHalfWidth = Mathf.Max(
+                playerHalfWidth,
+                playerCollider.bounds.extents.x);
+        }
+
+        return Mathf.Max(defaultMinimumX, bounds.min.x + playerHalfWidth);
     }
 
     Vector3 GetSafeSecondLevelStartPosition(Vector3 requestedPosition)

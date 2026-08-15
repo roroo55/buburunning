@@ -4,6 +4,13 @@ using UnityEngine;
 [RequireComponent(typeof(Camera))]
 public class EdgeScrollCamera2D : MonoBehaviour
 {
+    enum HorizontalControlMode
+    {
+        AutomaticByWorldPosition,
+        FollowPlayer,
+        MouseEdge
+    }
+
     public float cameraMovementSpeed = 6f;
     public float horizontalFollowThreshold = 2f;
     public float mouseEdgeThresholdPixels = 28f;
@@ -22,6 +29,9 @@ public class EdgeScrollCamera2D : MonoBehaviour
     Camera cameraComponent;
     float fixedY;
     bool doorPassed;
+    Transform activeLevelBounds;
+    HorizontalControlMode horizontalControlMode =
+        HorizontalControlMode.AutomaticByWorldPosition;
 
     void Awake()
     {
@@ -68,6 +78,29 @@ public class EdgeScrollCamera2D : MonoBehaviour
     public void UnlockForSecondLevel()
     {
         doorPassed = true;
+        activeLevelBounds = null;
+        horizontalControlMode = HorizontalControlMode.MouseEdge;
+        limitCameraUntilDoorPassed = false;
+        limitToFirstLevelBackgroundUntilDoorPassed = false;
+        limitCameraLeftEdge = false;
+    }
+
+    public void ConfigureStartingSecondLevelFollow(
+        Transform secondLevelBackground)
+    {
+        doorPassed = false;
+        activeLevelBounds = secondLevelBackground;
+        horizontalControlMode = HorizontalControlMode.FollowPlayer;
+        limitCameraUntilDoorPassed = false;
+        limitToFirstLevelBackgroundUntilDoorPassed = false;
+        limitCameraLeftEdge = false;
+    }
+
+    public void ConfigureFirstLevelMouseCamera()
+    {
+        doorPassed = false;
+        activeLevelBounds = firstLevelBackground;
+        horizontalControlMode = HorizontalControlMode.MouseEdge;
         limitCameraUntilDoorPassed = false;
         limitToFirstLevelBackgroundUntilDoorPassed = false;
         limitCameraLeftEdge = false;
@@ -148,6 +181,18 @@ public class EdgeScrollCamera2D : MonoBehaviour
 
     void MoveCameraByActiveEdgeMode()
     {
+        if (horizontalControlMode == HorizontalControlMode.FollowPlayer)
+        {
+            MoveWhenPlayerTouchesHorizontalEdge();
+            return;
+        }
+
+        if (horizontalControlMode == HorizontalControlMode.MouseEdge)
+        {
+            MoveWhenMouseTouchesHorizontalEdge();
+            return;
+        }
+
         float leftEdge = transform.position.x - GetCameraHalfWidth();
         if (leftEdge < mouseEdgeModeStartLeftEdgeX)
         {
@@ -318,9 +363,10 @@ public class EdgeScrollCamera2D : MonoBehaviour
 
     Bounds GetBackgroundBounds()
     {
-        SpriteRenderer[] backgroundRenderers = background.GetComponentsInChildren<SpriteRenderer>();
+        Transform boundsRoot = activeLevelBounds != null ? activeLevelBounds : background;
+        SpriteRenderer[] backgroundRenderers = boundsRoot.GetComponentsInChildren<SpriteRenderer>();
         bool hasBounds = false;
-        Bounds bounds = new Bounds(background.position, Vector3.zero);
+        Bounds bounds = new Bounds(boundsRoot.position, Vector3.zero);
 
         foreach (SpriteRenderer backgroundRenderer in backgroundRenderers)
         {

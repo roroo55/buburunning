@@ -37,6 +37,7 @@ public class BubuRunningGame : MonoBehaviour
     PatrollingSoldier2D[] soldiers = new PatrollingSoldier2D[0];
     Camera gameplayCamera;
     EdgeScrollCamera2D edgeScrollCamera;
+    LevelSegmentTransition2D levelTransition;
     Rect backgroundBounds;
     Rect playBounds;
     float fixedCameraY;
@@ -222,6 +223,14 @@ public class BubuRunningGame : MonoBehaviour
 
     Vector2 GetPlayerStartPosition()
     {
+        CacheLevelTransition();
+        if (levelTransition != null
+            && levelTransition.startInOriginalSecondLevel
+            && levelTransition.secondLevelStartPoint != null)
+        {
+            return levelTransition.secondLevelStartPoint.position;
+        }
+
         float startX = playBounds.xMin;
         float startY = Mathf.Clamp(backgroundBounds.center.y, playBounds.yMin, playBounds.yMax);
         return new Vector2(startX, startY);
@@ -235,6 +244,13 @@ public class BubuRunningGame : MonoBehaviour
         }
 
         edgeScrollCamera.Configure(player, backgroundRoot);
+        CacheLevelTransition();
+        if (levelTransition != null && levelTransition.startInOriginalSecondLevel)
+        {
+            edgeScrollCamera.ConfigureStartingSecondLevelFollow(
+                levelTransition.GetOriginalSecondLevelBackground());
+            edgeScrollCamera.SnapToPlayer();
+        }
     }
 
     Bounds GetBackgroundBounds()
@@ -462,12 +478,29 @@ public class BubuRunningGame : MonoBehaviour
 
     Vector2 ClampPlayerMovementPosition(Vector2 targetPosition)
     {
+        CacheLevelTransition();
+        float minX = playBounds.xMin;
+        if (levelTransition != null)
+        {
+            minX = levelTransition.GetMinimumPlayerCenterX(minX);
+        }
+
         float maxX = playBounds.xMax;
 
-        targetPosition.x = Mathf.Clamp(targetPosition.x, playBounds.xMin, maxX);
+        targetPosition.x = Mathf.Clamp(targetPosition.x, minX, maxX);
         targetPosition.y = Mathf.Clamp(targetPosition.y, playBounds.yMin, playBounds.yMax);
 
         return targetPosition;
+    }
+
+    void CacheLevelTransition()
+    {
+        if (levelTransition == null)
+        {
+            levelTransition =
+                FindAnyObjectByType<LevelSegmentTransition2D>(
+                    FindObjectsInactive.Include);
+        }
     }
 
     Vector2 ReadWasdInput()
