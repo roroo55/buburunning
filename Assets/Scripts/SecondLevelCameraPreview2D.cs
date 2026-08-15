@@ -252,8 +252,12 @@ public class SecondLevelCameraPreview2D : MonoBehaviour
 
     void GetSecondLevelCameraRange(out float leftCameraX, out float rightCameraX)
     {
-        Bounds bounds;
-        if (!TryGetRendererBounds(secondLevelBackground, out bounds))
+        Bounds bounds = new Bounds();
+        bool hasBounds =
+            cameraController != null
+            && cameraController.TryGetCombinedSecondLevelBounds(out bounds);
+        if (!hasBounds
+            && !TryGetRendererBounds(secondLevelBackground, out bounds))
         {
             leftCameraX = transform.position.x;
             rightCameraX = transform.position.x;

@@ -1,9 +1,17 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Camera))]
 public class EdgeScrollCamera2D : MonoBehaviour
 {
+    static readonly string[] DefaultCombinedSecondLevelBackgroundNames =
+    {
+        "level1Background",
+        "level1Background (1)"
+    };
+
     enum HorizontalControlMode
     {
         AutomaticByWorldPosition,
@@ -20,6 +28,11 @@ public class EdgeScrollCamera2D : MonoBehaviour
     public float doorPassedPadding = 0.05f;
     public bool limitToFirstLevelBackgroundUntilDoorPassed = true;
     public Transform firstLevelBackground;
+    public string[] combinedSecondLevelBackgroundNames =
+    {
+        "level1Background",
+        "level1Background (1)"
+    };
     public bool limitCameraLeftEdge = true;
     public float maxCameraLeftEdgeX = 29.6f;
     public Transform player;
@@ -30,6 +43,9 @@ public class EdgeScrollCamera2D : MonoBehaviour
     float fixedY;
     bool doorPassed;
     Transform activeLevelBounds;
+    bool useCombinedSecondLevelBounds;
+    readonly List<Transform> combinedSecondLevelBackgrounds =
+        new List<Transform>();
     HorizontalControlMode horizontalControlMode =
         HorizontalControlMode.AutomaticByWorldPosition;
 
@@ -79,6 +95,7 @@ public class EdgeScrollCamera2D : MonoBehaviour
     {
         doorPassed = true;
         activeLevelBounds = null;
+        useCombinedSecondLevelBounds = false;
         horizontalControlMode = HorizontalControlMode.MouseEdge;
         limitCameraUntilDoorPassed = false;
         limitToFirstLevelBackgroundUntilDoorPassed = false;
@@ -90,6 +107,7 @@ public class EdgeScrollCamera2D : MonoBehaviour
     {
         doorPassed = false;
         activeLevelBounds = secondLevelBackground;
+        useCombinedSecondLevelBounds = false;
         horizontalControlMode = HorizontalControlMode.FollowPlayer;
         limitCameraUntilDoorPassed = false;
         limitToFirstLevelBackgroundUntilDoorPassed = false;
@@ -100,6 +118,8 @@ public class EdgeScrollCamera2D : MonoBehaviour
     {
         doorPassed = false;
         activeLevelBounds = firstLevelBackground;
+        useCombinedSecondLevelBounds = true;
+        RefreshCombinedSecondLevelBackgrounds();
         horizontalControlMode = HorizontalControlMode.MouseEdge;
         limitCameraUntilDoorPassed = false;
         limitToFirstLevelBackgroundUntilDoorPassed = false;
@@ -363,6 +383,13 @@ public class EdgeScrollCamera2D : MonoBehaviour
 
     Bounds GetBackgroundBounds()
     {
+        Bounds combinedBounds;
+        if (useCombinedSecondLevelBounds
+            && TryGetCombinedSecondLevelBounds(out combinedBounds))
+        {
+            return combinedBounds;
+        }
+
         Transform boundsRoot = activeLevelBounds != null ? activeLevelBounds : background;
         SpriteRenderer[] backgroundRenderers = boundsRoot.GetComponentsInChildren<SpriteRenderer>();
         bool hasBounds = false;
@@ -387,6 +414,111 @@ public class EdgeScrollCamera2D : MonoBehaviour
         }
 
         return bounds;
+    }
+
+    public bool TryGetActiveLevelBounds(out Bounds bounds)
+    {
+        if (useCombinedSecondLevelBounds)
+        {
+            return TryGetCombinedSecondLevelBounds(out bounds);
+        }
+
+        if (activeLevelBounds != null)
+        {
+            return TryGetRendererBounds(activeLevelBounds, out bounds);
+        }
+
+        bounds = new Bounds();
+        return false;
+    }
+
+    public bool TryGetCombinedSecondLevelBounds(out Bounds bounds)
+    {
+        if (combinedSecondLevelBackgrounds.Count == 0)
+        {
+            RefreshCombinedSecondLevelBackgrounds();
+        }
+
+        bool hasBounds = false;
+        bounds = new Bounds();
+        foreach (Transform boundsRoot in combinedSecondLevelBackgrounds)
+        {
+            if (boundsRoot == null)
+            {
+                continue;
+            }
+
+            Bounds rootBounds;
+            if (!TryGetRendererBounds(boundsRoot, out rootBounds))
+            {
+                continue;
+            }
+
+            if (!hasBounds)
+            {
+                bounds = rootBounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(rootBounds);
+            }
+        }
+
+        return hasBounds;
+    }
+
+    void RefreshCombinedSecondLevelBackgrounds()
+    {
+        combinedSecondLevelBackgrounds.Clear();
+
+        GameObject[] sceneObjects =
+            FindObjectsByType<GameObject>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+        foreach (GameObject sceneObject in sceneObjects)
+        {
+            if (sceneObject == null
+                || !IsCombinedSecondLevelBackgroundName(sceneObject.name)
+                || combinedSecondLevelBackgrounds.Contains(
+                    sceneObject.transform))
+            {
+                continue;
+            }
+
+            combinedSecondLevelBackgrounds.Add(sceneObject.transform);
+        }
+    }
+
+    bool IsCombinedSecondLevelBackgroundName(string objectName)
+    {
+        string normalizedObjectName = NormalizeBackgroundName(objectName);
+        string[] configuredNames =
+            combinedSecondLevelBackgroundNames != null
+            && combinedSecondLevelBackgroundNames.Length > 0
+                ? combinedSecondLevelBackgroundNames
+                : DefaultCombinedSecondLevelBackgroundNames;
+        foreach (string configuredName in configuredNames)
+        {
+            if (normalizedObjectName
+                == NormalizeBackgroundName(configuredName))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static string NormalizeBackgroundName(string objectName)
+    {
+        return string.IsNullOrWhiteSpace(objectName)
+            ? string.Empty
+            : objectName
+                .Replace(" ", string.Empty)
+                .Replace('（', '(')
+                .Replace('）', ')')
+                .ToLowerInvariant();
     }
 
     float GetPlayerLeftEdgeX()

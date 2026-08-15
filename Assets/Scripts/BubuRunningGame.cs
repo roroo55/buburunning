@@ -480,15 +480,54 @@ public class BubuRunningGame : MonoBehaviour
     {
         CacheLevelTransition();
         float minX = playBounds.xMin;
+        float maxX = playBounds.xMax;
+        float minY = playBounds.yMin;
+        float maxY = playBounds.yMax;
+
+        Bounds activeLevelBounds;
+        if (edgeScrollCamera != null
+            && edgeScrollCamera.TryGetActiveLevelBounds(
+                out activeLevelBounds))
+        {
+            float playerHalfWidth = PlayerWidth * 0.5f;
+            float playerHalfHeight = PlayerHeight * 0.5f;
+            Collider2D playerCollider =
+                player != null
+                    ? player.GetComponentInChildren<Collider2D>()
+                    : null;
+            if (playerCollider != null && playerCollider.enabled)
+            {
+                playerHalfWidth = Mathf.Max(
+                    playerHalfWidth,
+                    playerCollider.bounds.extents.x);
+                playerHalfHeight = Mathf.Max(
+                    playerHalfHeight,
+                    playerCollider.bounds.extents.y);
+            }
+
+            minX = activeLevelBounds.min.x + playerHalfWidth;
+            maxX = activeLevelBounds.max.x - playerHalfWidth;
+            minY = activeLevelBounds.min.y + playerHalfHeight;
+            maxY = activeLevelBounds.max.y - playerHalfHeight;
+        }
+
         if (levelTransition != null)
         {
             minX = levelTransition.GetMinimumPlayerCenterX(minX);
         }
 
-        float maxX = playBounds.xMax;
+        if (maxX < minX)
+        {
+            minX = maxX = (minX + maxX) * 0.5f;
+        }
+
+        if (maxY < minY)
+        {
+            minY = maxY = (minY + maxY) * 0.5f;
+        }
 
         targetPosition.x = Mathf.Clamp(targetPosition.x, minX, maxX);
-        targetPosition.y = Mathf.Clamp(targetPosition.y, playBounds.yMin, playBounds.yMax);
+        targetPosition.y = Mathf.Clamp(targetPosition.y, minY, maxY);
 
         return targetPosition;
     }
