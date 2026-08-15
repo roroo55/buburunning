@@ -54036,6 +54036,9 @@ MonoBehaviour:
   randomizeItemsOnStart: 1
   hideItemsOnStart: 1
   refreshSearchPointsOnStart: 1
+  searchPointRoot: {fileID: 885452001}
+  searchOnlyWithinRoot: 1
+  addTriggerCollidersToRootChildren: 1
   allowMultipleItemsPerSearchPoint: 0
   logSearchResults: 1
   messageUI: {fileID: 385444526}

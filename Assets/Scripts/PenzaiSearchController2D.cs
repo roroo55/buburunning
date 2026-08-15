@@ -48,6 +48,11 @@ public class PenzaiSearchController2D : MonoBehaviour
     public bool hideItemsOnStart = true;
     public bool refreshSearchPointsOnStart = true;
 
+    [Header("Furniture Search Points")]
+    public Transform searchPointRoot;
+    public bool searchOnlyWithinRoot;
+    public bool addTriggerCollidersToRootChildren = true;
+
     [Tooltip("关闭时，每件隐藏物品一定会分配到不同盆栽。")]
     public bool allowMultipleItemsPerSearchPoint;
 
@@ -161,16 +166,46 @@ public class PenzaiSearchController2D : MonoBehaviour
             searchPoints.Clear();
         }
 
-        GameObject[] sceneObjects =
-            FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        foreach (GameObject sceneObject in sceneObjects)
+        HashSet<Transform> uniquePoints = new HashSet<Transform>();
+        if (searchPointRoot != null)
         {
-            if (sceneObject == null || !IsSearchPointName(sceneObject.name))
+            for (int index = 0; index < searchPointRoot.childCount; index++)
             {
-                continue;
-            }
+                Transform child = searchPointRoot.GetChild(index);
+                if (child == null)
+                {
+                    continue;
+                }
 
-            searchPoints.Add(sceneObject.transform);
+                if (addTriggerCollidersToRootChildren)
+                {
+                    EnsureSearchPointCollider(child);
+                }
+
+                if (uniquePoints.Add(child))
+                {
+                    searchPoints.Add(child);
+                }
+            }
+        }
+
+        if (!searchOnlyWithinRoot)
+        {
+            GameObject[] sceneObjects =
+                FindObjectsByType<GameObject>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None);
+            foreach (GameObject sceneObject in sceneObjects)
+            {
+                if (sceneObject == null
+                    || !IsSearchPointName(sceneObject.name)
+                    || !uniquePoints.Add(sceneObject.transform))
+                {
+                    continue;
+                }
+
+                searchPoints.Add(sceneObject.transform);
+            }
         }
 
         searchPoints.Sort(
@@ -423,8 +458,8 @@ public class PenzaiSearchController2D : MonoBehaviour
                 continue;
             }
 
-            Vector2 pointPosition = point.position;
-            float distanceSqr = (pointPosition - playerPosition).sqrMagnitude;
+            float distanceSqr =
+                GetDistanceSqrToSearchPoint(point, playerPosition);
             if (distanceSqr <= radiusSqr && distanceSqr < nearestDistanceSqr)
             {
                 nearestDistanceSqr = distanceSqr;
@@ -433,6 +468,38 @@ public class PenzaiSearchController2D : MonoBehaviour
         }
 
         return nearestPoint;
+    }
+
+    static float GetDistanceSqrToSearchPoint(
+        Transform point,
+        Vector2 playerPosition)
+    {
+        Collider2D pointCollider = point.GetComponent<Collider2D>();
+        Vector2 nearestPosition =
+            pointCollider != null && pointCollider.enabled
+                ? pointCollider.ClosestPoint(playerPosition)
+                : (Vector2)point.position;
+        return (nearestPosition - playerPosition).sqrMagnitude;
+    }
+
+    static void EnsureSearchPointCollider(Transform point)
+    {
+        if (point.GetComponent<Collider2D>() != null)
+        {
+            return;
+        }
+
+        BoxCollider2D collider = point.gameObject.AddComponent<BoxCollider2D>();
+        collider.isTrigger = true;
+
+        SpriteRenderer spriteRenderer = point.GetComponent<SpriteRenderer>();
+        if (spriteRenderer == null || spriteRenderer.sprite == null)
+        {
+            return;
+        }
+
+        collider.offset = spriteRenderer.sprite.bounds.center;
+        collider.size = spriteRenderer.sprite.bounds.size;
     }
 
     bool ExplorePoint(Transform point)
