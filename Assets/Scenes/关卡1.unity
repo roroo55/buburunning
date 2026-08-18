@@ -10073,6 +10073,7 @@ GameObject:
   m_Component:
   - component: {fileID: 171396037}
   - component: {fileID: 171396038}
+  - component: {fileID: 171396039}
   m_Layer: 0
   m_Name: chaji
   m_TagString: Untagged
@@ -10154,6 +10155,52 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!61 &171396039
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 171396036}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: -0.03507006, y: -0.7528405}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0.5, y: 0.5}
+    oldSize: {x: 1.89, y: 4.2302265}
+    newSize: {x: 1.89, y: 4.2302265}
+    adaptiveTilingThreshold: 0.5
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 1.6194613, y: 2.4857678}
+  m_EdgeRadius: 0
 --- !u!1 &172374512
 GameObject:
   m_ObjectHideFlags: 0
@@ -21606,7 +21653,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!212 &384968007
 SpriteRenderer:
   serializedVersion: 2
@@ -21815,6 +21862,7 @@ MonoBehaviour:
   nothingFoundMessage: Nothing was found.
   missingKeyMessage: You cannot open this door without the key.
   displayDuration: 2.5
+  nothingFoundDisplayDuration: 0.8
   useUnscaledTime: 1
   hideOnAwake: 1
   fontOverride: {fileID: 0}
@@ -54126,13 +54174,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PenzaiSearchController2D
   playerObjectName: Bubu Player
   searchPointPrefix: penzai
-  interactionRadius: 1.5
+  interactionRadius: 0.6
+  promptDisplayRadius: 0.6
+  promptWorldScale: 0.055
+  promptVerticalOffset: 0.35
+  hidePromptAfterSearch: 1
+  enableSearchDebug: 1
+  debugVisibleOnStart: 1
+  disableSearchWhileMazeActive: 1
+  mazePuzzleController: {fileID: 484116787}
   randomizeItemsOnStart: 1
   hideItemsOnStart: 1
   refreshSearchPointsOnStart: 1
   searchPointRoot: {fileID: 885452001}
   searchOnlyWithinRoot: 1
   addTriggerCollidersToRootChildren: 1
+  excludedHiddenItemPoints:
+  - {fileID: 1634475271}
+  - {fileID: 134241056}
   allowMultipleItemsPerSearchPoint: 0
   logSearchResults: 1
   messageUI: {fileID: 385444526}
@@ -56084,6 +56143,37 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!1 &1040195877
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1040195878}
+  m_Layer: 0
+  m_Name: DownSide
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1040195878
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1040195877}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -1.482, y: -1.327, z: 0}
+  m_LocalScale: {x: 0.9684292, y: 0.8878688, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1975895644}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1040450396
 GameObject:
   m_ObjectHideFlags: 0
@@ -99790,7 +99880,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 28
+  m_SortingOrder: 14
   m_MaskInteraction: 0
   m_Sprite: {fileID: -4726786679747761111, guid: ba26b06813bdc3d44bbd1cf047c736fd, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -111116,7 +111206,8 @@ Transform:
   m_LocalPosition: {x: 19.36, y: 2.19, z: 0}
   m_LocalScale: {x: 1.0326, y: 1.1262925, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1040195878}
   m_Father: {fileID: 885452001}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &1975895645

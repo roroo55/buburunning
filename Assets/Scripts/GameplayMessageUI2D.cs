@@ -41,6 +41,9 @@ public class GameplayMessageUI2D : MonoBehaviour
         "You cannot open this door without the key.";
     [Min(0f)]
     public float displayDuration = 2.5f;
+    [Min(0f)]
+    [Tooltip("How long the Nothing was found message remains visible.")]
+    public float nothingFoundDisplayDuration = 0.8f;
     public bool useUnscaledTime = true;
     public bool hideOnAwake = true;
     public Font fontOverride;
@@ -78,7 +81,12 @@ public class GameplayMessageUI2D : MonoBehaviour
 
     public void ShowNothingFoundMessage()
     {
-        ShowMessage(nothingFoundMessage);
+        ShowNothingFoundMessage(nothingFoundMessage);
+    }
+
+    public void ShowNothingFoundMessage(string message)
+    {
+        ShowMessageInternal(message, null, true, nothingFoundDisplayDuration);
     }
 
     public void ShowMissingKeyMessage()
@@ -88,20 +96,20 @@ public class GameplayMessageUI2D : MonoBehaviour
 
     public void ShowMessage(string message)
     {
-        ShowMessageInternal(message, null, true);
+        ShowMessageInternal(message, null, true, displayDuration);
     }
 
     public void ShowItemMessage(string message, Sprite icon)
     {
-        ShowMessageInternal(message, icon, true);
+        ShowMessageInternal(message, icon, true, displayDuration);
     }
 
     public void ShowPersistentMessage(string message)
     {
-        ShowMessageInternal(message, null, false);
+        ShowMessageInternal(message, null, false, 0f);
     }
 
-    void ShowMessageInternal(string message, Sprite icon, bool autoHide)
+    void ShowMessageInternal(string message, Sprite icon, bool autoHide, float duration)
     {
         CacheReferences();
         ConfigureFont();
@@ -123,9 +131,9 @@ public class GameplayMessageUI2D : MonoBehaviour
             hideRoutine = null;
         }
 
-        if (autoHide && displayDuration > 0f)
+        if (autoHide && duration > 0f)
         {
-            hideRoutine = StartCoroutine(HideAfterDelay(displayDuration));
+            hideRoutine = StartCoroutine(HideAfterDelay(duration));
         }
     }
 

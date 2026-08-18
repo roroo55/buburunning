@@ -76,7 +76,10 @@ public static class PenzaiSearchSceneSetup
 
         controller.playerObjectName = BubuRunningGame.PlayerRootName;
         controller.searchPointPrefix = "penzai";
-        controller.interactionRadius = Mathf.Max(controller.interactionRadius, 1.5f);
+        if (controller.interactionRadius <= 0f)
+        {
+            controller.interactionRadius = 0.6f;
+        }
         controller.randomizeItemsOnStart = true;
         controller.hideItemsOnStart = true;
         controller.player = FindTransformByExactName(BubuRunningGame.PlayerRootName);

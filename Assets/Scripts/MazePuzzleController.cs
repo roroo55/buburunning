@@ -3,6 +3,8 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class MazePuzzleController : MonoBehaviour
 {
+    public bool IsActive { get; private set; }
+
     public GameObject mazeRoot;
     public GameObject keyForMaze;
     public Transform keyStartPoint;
@@ -62,6 +64,8 @@ public class MazePuzzleController : MonoBehaviour
 
     void ApplyVisibility(bool visible)
     {
+        IsActive = visible;
+
         if (mazeRoot != null)
         {
             mazeRoot.SetActive(visible);

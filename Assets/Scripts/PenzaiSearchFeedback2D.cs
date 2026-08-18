@@ -47,7 +47,7 @@ public class PenzaiSearchFeedback2D : MonoBehaviour
 
         if (messageUI != null)
         {
-            messageUI.ShowMessage(nothingFoundMessage);
+            messageUI.ShowNothingFoundMessage(nothingFoundMessage);
         }
     }
 

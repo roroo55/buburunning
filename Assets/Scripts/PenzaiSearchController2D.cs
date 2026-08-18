@@ -43,7 +43,29 @@ public class PenzaiSearchController2D : MonoBehaviour
 
     public string playerObjectName = BubuRunningGame.PlayerRootName;
     public string searchPointPrefix = "penzai";
+
+    [Header("Search Range And Prompt")]
+    [Min(0f)]
+    [InspectorName("P Search Radius")]
     public float interactionRadius = 1.5f;
+    [Min(0f)]
+    [Tooltip("Only the nearest searchable object inside this radius shows the prompt.")]
+    public float promptDisplayRadius = 0.6f;
+    [Min(0.001f)]
+    [Tooltip("World-space size of the shared search prompt.")]
+    public float promptWorldScale = 0.055f;
+    public float promptVerticalOffset = 0.35f;
+    public bool hidePromptAfterSearch = true;
+
+    [Header("Search Debug")]
+    public bool enableSearchDebug = true;
+    public bool debugVisibleOnStart = true;
+
+    [Header("Search Blocking")]
+    [Tooltip("When enabled, the search prompt and P-key search are disabled while the maze is visible.")]
+    public bool disableSearchWhileMazeActive = true;
+    public MazePuzzleController mazePuzzleController;
+
     public bool randomizeItemsOnStart = true;
     public bool hideItemsOnStart = true;
     public bool refreshSearchPointsOnStart = true;
@@ -52,6 +74,9 @@ public class PenzaiSearchController2D : MonoBehaviour
     public Transform searchPointRoot;
     public bool searchOnlyWithinRoot;
     public bool addTriggerCollidersToRootChildren = true;
+
+    [Tooltip("These objects remain searchable, but hidden items will never be assigned to them.")]
+    public List<Transform> excludedHiddenItemPoints = new List<Transform>();
 
     [Tooltip("关闭时，每件隐藏物品一定会分配到不同盆栽。")]
     public bool allowMultipleItemsPerSearchPoint;
@@ -73,16 +98,29 @@ public class PenzaiSearchController2D : MonoBehaviour
 
     readonly HashSet<string> collectedItemNames =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    readonly HashSet<Transform> exploredSearchPoints = new HashSet<Transform>();
+
+    GameObject sharedSearchPrompt;
+    GameObject searchPromptTemplate;
 
     public bool HasKey => HasItem("key");
 
     void Awake()
     {
         InitializeSearchState();
+        EnsureSearchDebugOverlay();
     }
 
     void Update()
     {
+        if (IsSearchSuppressed)
+        {
+            DestroySharedSearchPrompt();
+            return;
+        }
+
+        UpdateSharedSearchPrompt();
+
         if (WasExplorePressed())
         {
             TryExploreNearestPoint();
@@ -157,6 +195,13 @@ public class PenzaiSearchController2D : MonoBehaviour
 
     public void RefreshSearchPointsFromScene()
     {
+        List<Transform> inspectorSearchPoints =
+            searchPoints != null
+                ? new List<Transform>(searchPoints)
+                : new List<Transform>();
+
+        GameObject promptTemplate = FindPromptTemplate(inspectorSearchPoints);
+
         if (searchPoints == null)
         {
             searchPoints = new List<Transform>();
@@ -189,6 +234,17 @@ public class PenzaiSearchController2D : MonoBehaviour
             }
         }
 
+        foreach (Transform point in inspectorSearchPoints)
+        {
+            if (point == null || !uniquePoints.Add(point))
+            {
+                continue;
+            }
+
+            EnsureSearchPointCollider(point);
+            searchPoints.Add(point);
+        }
+
         if (!searchOnlyWithinRoot)
         {
             GameObject[] sceneObjects =
@@ -211,10 +267,232 @@ public class PenzaiSearchController2D : MonoBehaviour
         searchPoints.Sort(
             (first, second) =>
                 string.Compare(first.name, second.name, StringComparison.OrdinalIgnoreCase));
+
+        SetupSharedSearchPrompt(promptTemplate);
+    }
+
+    public bool IsSearchSuppressed
+    {
+        get
+        {
+            if (!disableSearchWhileMazeActive)
+            {
+                return false;
+            }
+
+            if (mazePuzzleController == null)
+            {
+                mazePuzzleController = FindAnyObjectByType<MazePuzzleController>(FindObjectsInactive.Include);
+            }
+
+            return mazePuzzleController != null && mazePuzzleController.IsActive;
+        }
+    }
+
+    public bool WasSearchPointExplored(Transform point)
+    {
+        return point != null && exploredSearchPoints.Contains(point);
+    }
+
+    void EnsureSearchDebugOverlay()
+    {
+        PenzaiSearchDebugOverlay2D overlay = GetComponent<PenzaiSearchDebugOverlay2D>();
+        if (!enableSearchDebug)
+        {
+            if (overlay != null)
+            {
+                overlay.enabled = false;
+            }
+
+            return;
+        }
+
+        if (overlay == null)
+        {
+            overlay = gameObject.AddComponent<PenzaiSearchDebugOverlay2D>();
+        }
+
+        overlay.controller = this;
+        overlay.SetVisible(debugVisibleOnStart);
+        overlay.enabled = true;
+    }
+
+    static GameObject FindPromptTemplate(List<Transform> preferredPoints)
+    {
+        foreach (Transform point in preferredPoints)
+        {
+            if (point == null)
+            {
+                continue;
+            }
+
+            HandPromptTrigger2D prompt = point.GetComponent<HandPromptTrigger2D>();
+            if (prompt != null && prompt.handObject != null)
+            {
+                return prompt.handObject;
+            }
+        }
+
+        return null;
+    }
+
+    void SetupSharedSearchPrompt(GameObject template)
+    {
+        if (template != null)
+        {
+            searchPromptTemplate = template;
+        }
+
+        foreach (Transform point in searchPoints)
+        {
+            if (point == null)
+            {
+                continue;
+            }
+
+            HandPromptTrigger2D oldPrompt = point.GetComponent<HandPromptTrigger2D>();
+            if (oldPrompt == null)
+            {
+                continue;
+            }
+
+            oldPrompt.SetHandVisible(false);
+            oldPrompt.enabled = false;
+        }
+
+        if (!IsSearchSuppressed)
+        {
+            EnsureSharedSearchPrompt();
+        }
+
+        ApplyPromptSize();
+        SetSharedPromptVisible(false);
+    }
+
+    void UpdateSharedSearchPrompt()
+    {
+        if (IsSearchSuppressed)
+        {
+            DestroySharedSearchPrompt();
+            return;
+        }
+
+        EnsureSharedSearchPrompt();
+
+        if (sharedSearchPrompt == null || player == null)
+        {
+            SetSharedPromptVisible(false);
+            return;
+        }
+
+        Transform nearestPoint = GetNearestPromptPoint();
+        if (nearestPoint == null)
+        {
+            SetSharedPromptVisible(false);
+            return;
+        }
+
+        PositionSharedPrompt(nearestPoint);
+        ApplyPromptSize();
+        SetSharedPromptVisible(true);
+    }
+
+    void EnsureSharedSearchPrompt()
+    {
+        if (sharedSearchPrompt != null || searchPromptTemplate == null || IsSearchSuppressed)
+        {
+            return;
+        }
+
+        sharedSearchPrompt = Instantiate(searchPromptTemplate);
+        sharedSearchPrompt.name = "Shared Search Prompt";
+        sharedSearchPrompt.transform.SetParent(null, true);
+        ApplyPromptSize();
+        SetSharedPromptVisible(false);
+    }
+
+    void DestroySharedSearchPrompt()
+    {
+        if (sharedSearchPrompt == null)
+        {
+            return;
+        }
+
+        Destroy(sharedSearchPrompt);
+        sharedSearchPrompt = null;
+    }
+
+    Transform GetNearestPromptPoint()
+    {
+        float radiusSqr = promptDisplayRadius * promptDisplayRadius;
+        float nearestDistanceSqr = float.PositiveInfinity;
+        Transform nearestPoint = null;
+        Vector2 playerPosition = player.position;
+
+        foreach (Transform point in searchPoints)
+        {
+            if (point == null
+                || !point.gameObject.activeInHierarchy
+                || (hidePromptAfterSearch && exploredSearchPoints.Contains(point)))
+            {
+                continue;
+            }
+
+            float distanceSqr = GetDistanceSqrToSearchPoint(point, playerPosition);
+            if (distanceSqr <= radiusSqr && distanceSqr < nearestDistanceSqr)
+            {
+                nearestDistanceSqr = distanceSqr;
+                nearestPoint = point;
+            }
+        }
+
+        return nearestPoint;
+    }
+
+    void PositionSharedPrompt(Transform point)
+    {
+        Renderer renderer = point.GetComponentInChildren<Renderer>(true);
+        Vector3 position = point.position + Vector3.up * promptVerticalOffset;
+        if (renderer != null)
+        {
+            Bounds bounds = renderer.bounds;
+            position = new Vector3(
+                bounds.center.x,
+                bounds.max.y + promptVerticalOffset,
+                point.position.z - 0.1f);
+        }
+
+        sharedSearchPrompt.transform.position = position;
+        sharedSearchPrompt.transform.rotation = Quaternion.identity;
+    }
+
+    void ApplyPromptSize()
+    {
+        if (sharedSearchPrompt == null)
+        {
+            return;
+        }
+
+        float scale = Mathf.Max(0.001f, promptWorldScale);
+        sharedSearchPrompt.transform.localScale = new Vector3(scale, scale, 1f);
+    }
+
+    void SetSharedPromptVisible(bool visible)
+    {
+        if (sharedSearchPrompt != null && sharedSearchPrompt.activeSelf != visible)
+        {
+            sharedSearchPrompt.SetActive(visible);
+        }
     }
 
     public bool TryExploreNearestPoint()
     {
+        if (IsSearchSuppressed)
+        {
+            DestroySharedSearchPrompt();
+            return false;
+        }
+
         CacheMissingReferences();
 
         Transform point = GetNearestSearchPointInRange();
@@ -261,6 +539,7 @@ public class PenzaiSearchController2D : MonoBehaviour
     void ResetCollectedItems()
     {
         collectedItemNames.Clear();
+        exploredSearchPoints.Clear();
         foreach (HiddenItem item in hiddenItems)
         {
             if (item == null)
@@ -370,7 +649,10 @@ public class PenzaiSearchController2D : MonoBehaviour
 
         foreach (Transform point in searchPoints)
         {
-            if (point != null && point.gameObject.activeInHierarchy)
+            if (point != null
+                && point.gameObject.activeInHierarchy
+                && (excludedHiddenItemPoints == null
+                    || !excludedHiddenItemPoints.Contains(point)))
             {
                 availablePoints.Add(point);
             }
@@ -505,6 +787,7 @@ public class PenzaiSearchController2D : MonoBehaviour
     bool ExplorePoint(Transform point)
     {
         PlaySearchAudio();
+        exploredSearchPoints.Add(point);
 
         List<string> foundMessages = new List<string>();
         Sprite foundIcon = null;
@@ -570,6 +853,14 @@ public class PenzaiSearchController2D : MonoBehaviour
         }
 
         return foundItem;
+    }
+
+    void OnValidate()
+    {
+        interactionRadius = Mathf.Max(0f, interactionRadius);
+        promptDisplayRadius = Mathf.Max(0f, promptDisplayRadius);
+        promptWorldScale = Mathf.Max(0.001f, promptWorldScale);
+        ApplyPromptSize();
     }
 
     public void PlaySearchAudio()
