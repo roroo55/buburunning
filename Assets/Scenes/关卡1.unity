@@ -54436,16 +54436,16 @@ MonoBehaviour:
   promptWorldScale: 0.055
   promptVerticalOffset: 0.35
   hidePromptAfterSearch: 1
-  enableSearchDebug: 1
-  debugVisibleOnStart: 1
+  enableSearchDebug: 0
+  debugVisibleOnStart: 0
   disableSearchWhileMazeActive: 1
   mazePuzzleController: {fileID: 484116787}
   randomizeItemsOnStart: 1
   hideItemsOnStart: 1
   refreshSearchPointsOnStart: 1
-  searchPointRoot: {fileID: 885452001}
-  searchOnlyWithinRoot: 1
-  addTriggerCollidersToRootChildren: 1
+  searchPointRoot: {fileID: 0}
+  searchOnlyWithinRoot: 0
+  addTriggerCollidersToRootChildren: 0
   excludedHiddenItemPoints:
   - {fileID: 1634475271}
   - {fileID: 134241056}
@@ -107222,7 +107222,10 @@ MonoBehaviour:
   freezeTimeDuringTransition: 1
   unlockCameraForSecondLevel: 1
   avoidSoldierSpawnOverlap: 1
+  waitUntilPlayerFullyPassesDoor: 1
+  respawnAtDestinationLeftEdge: 1
   soldierSpawnSafetyPadding: 0.35
+  destinationLeftEdgePadding: 0.15
   triggerPadding: 0.05
   fadeOutDuration: 0.65
   holdBlackDuration: 0.2

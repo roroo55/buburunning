@@ -766,12 +766,36 @@ public class PenzaiSearchController2D : MonoBehaviour
 
     static void EnsureSearchPointCollider(Transform point)
     {
+        if (point == null)
+        {
+            return;
+        }
+
         if (point.GetComponent<Collider2D>() != null)
         {
             return;
         }
 
+        Collider threeDimensionalCollider = point.GetComponent<Collider>();
+        if (threeDimensionalCollider != null)
+        {
+            Debug.LogWarning(
+                "Skipped adding a 2D search trigger to '"
+                + point.name
+                + "' because it already has a 3D collider.",
+                point);
+            return;
+        }
+
         BoxCollider2D collider = point.gameObject.AddComponent<BoxCollider2D>();
+        if (collider == null)
+        {
+            Debug.LogWarning(
+                "Could not add a 2D search trigger to '" + point.name + "'.",
+                point);
+            return;
+        }
+
         collider.isTrigger = true;
 
         SpriteRenderer spriteRenderer = point.GetComponent<SpriteRenderer>();

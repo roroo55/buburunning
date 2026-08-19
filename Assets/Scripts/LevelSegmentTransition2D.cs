@@ -26,8 +26,12 @@ public class LevelSegmentTransition2D : MonoBehaviour
     public bool freezeTimeDuringTransition = true;
     public bool unlockCameraForSecondLevel = true;
     public bool avoidSoldierSpawnOverlap = true;
+    public bool waitUntilPlayerFullyPassesDoor = true;
+    public bool respawnAtDestinationLeftEdge = true;
     [Min(0f)]
     public float soldierSpawnSafetyPadding = 0.35f;
+    [Min(0f)]
+    public float destinationLeftEdgePadding = 0.15f;
     public float triggerPadding = 0.05f;
     public float fadeOutDuration = 0.65f;
     public float holdBlackDuration = 0.2f;
@@ -106,8 +110,11 @@ public class LevelSegmentTransition2D : MonoBehaviour
         }
 
         float doorRightEdge = GetDoorRightEdgeX();
-        float playerRightEdge = GetPlayerRightEdgeX();
-        return playerRightEdge > doorRightEdge + Mathf.Max(0f, triggerPadding);
+        float playerEdge =
+            waitUntilPlayerFullyPassesDoor
+                ? GetPlayerLeftEdgeX()
+                : GetPlayerRightEdgeX();
+        return playerEdge > doorRightEdge + Mathf.Max(0f, triggerPadding);
     }
 
     IEnumerator RunTransition()
@@ -193,8 +200,11 @@ public class LevelSegmentTransition2D : MonoBehaviour
             return;
         }
 
-        Vector3 targetPosition =
-            GetSafeSecondLevelStartPosition(secondLevelStartPoint.position);
+        Vector3 targetPosition = GetDestinationSpawnPosition(
+            secondLevelStartPoint.position);
+        targetPosition = GetSafeSecondLevelStartPosition(targetPosition);
+        targetPosition = ClampToDestinationBounds(targetPosition);
+        EnsurePlayerActive();
         Rigidbody2D playerBody = player.GetComponent<Rigidbody2D>();
         if (playerBody != null)
         {
@@ -228,8 +238,11 @@ public class LevelSegmentTransition2D : MonoBehaviour
             return;
         }
 
-        Vector3 targetPosition =
-            GetSafeSecondLevelStartPosition(firstLevelStartPoint.position);
+        Vector3 targetPosition = GetDestinationSpawnPosition(
+            firstLevelStartPoint.position);
+        targetPosition = GetSafeSecondLevelStartPosition(targetPosition);
+        targetPosition = ClampToDestinationBounds(targetPosition);
+        EnsurePlayerActive();
         Rigidbody2D playerBody = player.GetComponent<Rigidbody2D>();
         if (playerBody != null)
         {
@@ -290,6 +303,122 @@ public class LevelSegmentTransition2D : MonoBehaviour
         }
 
         return Mathf.Max(defaultMinimumX, bounds.min.x + playerHalfWidth);
+    }
+
+    Vector3 GetDestinationSpawnPosition(Vector3 fallbackPosition)
+    {
+        if (!respawnAtDestinationLeftEdge)
+        {
+            return fallbackPosition;
+        }
+
+        Bounds destinationBounds;
+        if (!TryGetDestinationLevelBounds(out destinationBounds))
+        {
+            return fallbackPosition;
+        }
+
+        Vector2 playerHalfExtents = GetPlayerHalfExtents();
+        float minimumCenterX =
+            destinationBounds.min.x
+            + playerHalfExtents.x
+            + Mathf.Max(0f, destinationLeftEdgePadding);
+        float maximumCenterX = destinationBounds.max.x - playerHalfExtents.x;
+        fallbackPosition.x =
+            minimumCenterX <= maximumCenterX
+                ? minimumCenterX
+                : destinationBounds.center.x;
+
+        float minimumCenterY = destinationBounds.min.y + playerHalfExtents.y;
+        float maximumCenterY = destinationBounds.max.y - playerHalfExtents.y;
+        fallbackPosition.y =
+            minimumCenterY <= maximumCenterY
+                ? Mathf.Clamp(
+                    fallbackPosition.y,
+                    minimumCenterY,
+                    maximumCenterY)
+                : destinationBounds.center.y;
+        return fallbackPosition;
+    }
+
+    Vector3 ClampToDestinationBounds(Vector3 position)
+    {
+        Bounds destinationBounds;
+        if (!TryGetDestinationLevelBounds(out destinationBounds))
+        {
+            return position;
+        }
+
+        Vector2 playerHalfExtents = GetPlayerHalfExtents();
+        float minimumCenterX = destinationBounds.min.x + playerHalfExtents.x;
+        float maximumCenterX = destinationBounds.max.x - playerHalfExtents.x;
+        float minimumCenterY = destinationBounds.min.y + playerHalfExtents.y;
+        float maximumCenterY = destinationBounds.max.y - playerHalfExtents.y;
+
+        position.x =
+            minimumCenterX <= maximumCenterX
+                ? Mathf.Clamp(position.x, minimumCenterX, maximumCenterX)
+                : destinationBounds.center.x;
+        position.y =
+            minimumCenterY <= maximumCenterY
+                ? Mathf.Clamp(position.y, minimumCenterY, maximumCenterY)
+                : destinationBounds.center.y;
+        return position;
+    }
+
+    bool TryGetDestinationLevelBounds(out Bounds bounds)
+    {
+        if (startInOriginalSecondLevel)
+        {
+            if (cameraController != null
+                && cameraController.TryGetCombinedSecondLevelBounds(out bounds))
+            {
+                return true;
+            }
+
+            if (cameraController != null
+                && cameraController.firstLevelBackground != null
+                && TryGetRendererBounds(
+                    cameraController.firstLevelBackground,
+                    out bounds))
+            {
+                return true;
+            }
+        }
+        else
+        {
+            Transform secondLevelBackground = GetOriginalSecondLevelBackground();
+            if (secondLevelBackground != null
+                && TryGetRendererBounds(secondLevelBackground, out bounds))
+            {
+                return true;
+            }
+        }
+
+        bounds = new Bounds();
+        return false;
+    }
+
+    Vector2 GetPlayerHalfExtents()
+    {
+        float halfWidth = BubuRunningGame.PlayerWidth * 0.5f;
+        float halfHeight = BubuRunningGame.PlayerHeight * 0.5f;
+        if (playerCollider != null && playerCollider.enabled)
+        {
+            Bounds playerBounds = playerCollider.bounds;
+            halfWidth = Mathf.Max(halfWidth, playerBounds.extents.x);
+            halfHeight = Mathf.Max(halfHeight, playerBounds.extents.y);
+        }
+
+        return new Vector2(halfWidth, halfHeight);
+    }
+
+    void EnsurePlayerActive()
+    {
+        if (player != null && !player.gameObject.activeSelf)
+        {
+            player.gameObject.SetActive(true);
+        }
     }
 
     Vector3 GetSafeSecondLevelStartPosition(Vector3 requestedPosition)
@@ -508,6 +637,16 @@ public class LevelSegmentTransition2D : MonoBehaviour
         if (playerCollider != null && playerCollider.enabled)
         {
             return playerCollider.bounds.max.x;
+        }
+
+        return player != null ? player.position.x : 0f;
+    }
+
+    float GetPlayerLeftEdgeX()
+    {
+        if (playerCollider != null && playerCollider.enabled)
+        {
+            return playerCollider.bounds.min.x;
         }
 
         return player != null ? player.position.x : 0f;
