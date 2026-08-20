@@ -93,7 +93,7 @@ public class PenzaiSearchDebugOverlay2D : MonoBehaviour
 
     void DrawItems()
     {
-        GUILayout.Label("ITEMS");
+        GUILayout.Label("HIDDEN ITEMS");
         foreach (PenzaiSearchController2D.HiddenItem item in controller.hiddenItems)
         {
             if (item == null)
@@ -101,13 +101,28 @@ public class PenzaiSearchDebugOverlay2D : MonoBehaviour
                 continue;
             }
 
+            Transform point = item.assignedSearchPoint;
             string state = item.collected ? "FOUND" : "NOT FOUND";
-            string location = item.assignedSearchPoint != null ? item.assignedSearchPoint.name : "UNASSIGNED";
+            string location = point != null ? point.name : "UNASSIGNED";
             GUILayout.Label("[" + state + "] " + item.itemName);
             if (showAssignedLocations)
             {
                 GUILayout.Label("    assigned to: " + location);
+                if (point != null)
+                {
+                    string searchState = controller.WasSearchPointExplored(point)
+                        ? "SEARCHED"
+                        : "UNSEARCHED";
+                    string activeState = point.gameObject.activeInHierarchy
+                        ? "ACTIVE"
+                        : "INACTIVE";
+                    GUILayout.Label("    host state: " + searchState + " / " + activeState);
+                    GUILayout.Label("    hierarchy: " + GetHierarchyPath(point));
+                    GUILayout.Label("    world position: " + FormatPosition(point.position));
+                }
             }
+
+            GUILayout.Space(4f);
         }
     }
 
@@ -176,10 +191,21 @@ public class PenzaiSearchDebugOverlay2D : MonoBehaviour
                 continue;
             }
 
+            Transform point = item.assignedSearchPoint;
             report.Append("ITEM ").Append(item.itemName)
                 .Append(" | ").Append(item.collected ? "FOUND" : "NOT FOUND")
                 .Append(" | location=")
-                .AppendLine(item.assignedSearchPoint != null ? item.assignedSearchPoint.name : "UNASSIGNED");
+                .Append(point != null ? point.name : "UNASSIGNED");
+            if (point != null)
+            {
+                report.Append(" | host=")
+                    .Append(controller.WasSearchPointExplored(point) ? "SEARCHED" : "UNSEARCHED")
+                    .Append(point.gameObject.activeInHierarchy ? "/ACTIVE" : "/INACTIVE")
+                    .Append(" | hierarchy=").Append(GetHierarchyPath(point))
+                    .Append(" | position=").Append(FormatPosition(point.position));
+            }
+
+            report.AppendLine();
         }
 
         foreach (Transform point in controller.searchPoints)
@@ -199,6 +225,31 @@ public class PenzaiSearchDebugOverlay2D : MonoBehaviour
         }
 
         Debug.Log(report.ToString());
+    }
+
+    static string GetHierarchyPath(Transform target)
+    {
+        if (target == null)
+        {
+            return "<missing>";
+        }
+
+        StringBuilder path = new StringBuilder(target.name);
+        Transform parent = target.parent;
+        while (parent != null)
+        {
+            path.Insert(0, parent.name + "/");
+            parent = parent.parent;
+        }
+
+        return path.ToString();
+    }
+
+    static string FormatPosition(Vector3 position)
+    {
+        return "(" + position.x.ToString("0.##")
+            + ", " + position.y.ToString("0.##")
+            + ", " + position.z.ToString("0.##") + ")";
     }
 
     void CacheController()

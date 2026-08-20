@@ -96,7 +96,7 @@ public class EdgeScrollCamera2D : MonoBehaviour
         doorPassed = true;
         activeLevelBounds = null;
         useCombinedSecondLevelBounds = false;
-        horizontalControlMode = HorizontalControlMode.MouseEdge;
+        horizontalControlMode = HorizontalControlMode.FollowPlayer;
         limitCameraUntilDoorPassed = false;
         limitToFirstLevelBackgroundUntilDoorPassed = false;
         limitCameraLeftEdge = false;
@@ -112,6 +112,18 @@ public class EdgeScrollCamera2D : MonoBehaviour
         limitCameraUntilDoorPassed = false;
         limitToFirstLevelBackgroundUntilDoorPassed = false;
         limitCameraLeftEdge = false;
+    }
+
+    public void ConfigureFirstLevelFollow()
+    {
+        doorPassed = false;
+        activeLevelBounds = null;
+        useCombinedSecondLevelBounds = false;
+        horizontalControlMode = HorizontalControlMode.FollowPlayer;
+        limitCameraUntilDoorPassed = false;
+        limitToFirstLevelBackgroundUntilDoorPassed = false;
+        limitCameraLeftEdge = false;
+        SnapToPlayer();
     }
 
     public void ConfigureFirstLevelMouseCamera()
