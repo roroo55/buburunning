@@ -114161,7 +114161,7 @@ MonoBehaviour:
   screenRenderer: {fileID: 1975895645}
   boundaryYOffset: 0
   playerFeetYOffset: 0
-  screenOrderWhenPlayerBehind: 16
+  screenOrderWhenPlayerBehind: 14
   screenOrderWhenPlayerInFront: 1
   showDebugBoundary: 1
   debugBoundaryColor: {r: 0, g: 1, b: 1, a: 1}
