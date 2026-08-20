@@ -224,11 +224,16 @@ public class BubuRunningGame : MonoBehaviour
     Vector2 GetPlayerStartPosition()
     {
         CacheLevelTransition();
-        if (levelTransition != null
-            && levelTransition.startInOriginalSecondLevel
-            && levelTransition.secondLevelStartPoint != null)
+        if (levelTransition != null)
         {
-            return levelTransition.secondLevelStartPoint.position;
+            Transform configuredStartPoint =
+                levelTransition.startInOriginalSecondLevel
+                    ? levelTransition.secondLevelStartPoint
+                    : levelTransition.firstLevelStartPoint;
+            if (configuredStartPoint != null)
+            {
+                return configuredStartPoint.position;
+            }
         }
 
         float startX = playBounds.xMin;
@@ -250,7 +255,10 @@ public class BubuRunningGame : MonoBehaviour
             edgeScrollCamera.ConfigureStartingSecondLevelFollow(
                 levelTransition.GetOriginalSecondLevelBackground());
             edgeScrollCamera.SnapToPlayer();
+            return;
         }
+
+        edgeScrollCamera.ConfigureFirstLevelFollow();
     }
 
     Bounds GetBackgroundBounds()

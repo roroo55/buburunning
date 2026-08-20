@@ -43557,7 +43557,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 20
+  m_SortingOrder: 14
   m_MaskInteraction: 0
   m_Sprite: {fileID: 1545690415342465132, guid: a746117ca0800bd41a7b883474035e66, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -54500,13 +54500,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PenzaiSearchController2D
   playerObjectName: Bubu Player
   searchPointPrefix: penzai
-  interactionRadius: 0.6
-  promptDisplayRadius: 0.6
+  interactionRadius: 1.2
+  promptDisplayRadius: 1.2
   promptWorldScale: 0.055
   promptVerticalOffset: 0.35
   hidePromptAfterSearch: 1
-  enableSearchDebug: 0
-  debugVisibleOnStart: 0
+  enableSearchDebug: 1
+  debugVisibleOnStart: 1
   disableSearchWhileMazeActive: 1
   mazePuzzleController: {fileID: 484116787}
   randomizeItemsOnStart: 1
@@ -55805,7 +55805,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 15
+  m_SortingOrder: 14
   m_MaskInteraction: 0
   m_Sprite: {fileID: 6935890805188918112, guid: 590d7fac039dc054185f0db0b07cca5f, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -105121,7 +105121,7 @@ MonoBehaviour:
   - {fileID: 3100000000}
   behavioursEnabledInSecondLevel: []
   disableSecondLevelContentOnStart: 1
-  startInOriginalSecondLevel: 1
+  startInOriginalSecondLevel: 0
   requireDoorSolved: 1
   transitionWhenPlayerPassesDoor: 1
   freezeTimeDuringTransition: 1
@@ -112042,7 +112042,7 @@ MonoBehaviour:
   screenRenderer: {fileID: 1975895645}
   boundaryYOffset: 0
   playerFeetYOffset: 0
-  screenOrderWhenPlayerBehind: 16
+  screenOrderWhenPlayerBehind: 14
   screenOrderWhenPlayerInFront: 1
   showDebugBoundary: 1
   debugBoundaryColor: {r: 0, g: 1, b: 1, a: 1}
@@ -132773,7 +132773,7 @@ Transform:
   m_GameObject: {fileID: 3900000000}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 7.1, y: -1.1, z: 0}
+  m_LocalPosition: {x: 42.68, y: -1.1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
